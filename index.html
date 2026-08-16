@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Rhythm Drift</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080a14;color:#fff;font-family:system-ui,Arial,sans-serif}
+body{touch-action:none}
+button{border:0;border-radius:14px;padding:11px 16px;background:#242b49;color:#fff;font-weight:800;cursor:pointer}
+button:active{transform:scale(.97)}
+.hidden{display:none!important}
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#1b2750,#090b16 70%);z-index:20}
+.panel{width:min(92%,650px);padding:25px;border:1px solid #303b61;border-radius:24px;background:rgba(11,15,34,.88);box-shadow:0 20px 70px #0008;backdrop-filter:blur(12px)}
+h1{font-size:38px;margin:0 0 8px}.muted{color:#96a0c4}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+.menuTitle{text-align:center;margin-bottom:24px}
+.menuTitle p{margin:5px 0}
+.card{padding:15px;border:1px solid #2e3758;border-radius:16px;background:#141a31;margin:10px 0}
+.card.active{border-color:#6fe5ff;box-shadow:0 0 18px #43d9ff33}
+.progressGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.progressCell{padding:9px 5px;border-radius:10px;background:#0d1226;border:1px solid #293352;text-align:center;font-size:11px}
+.progressCell.done{border-color:#62e8a5;background:#10271f}
+.progressCell b{display:block;font-size:12px}.progressCell span{color:#8e99bb}
+@media(max-width:600px){.progressGrid{grid-template-columns:repeat(2,1fr)}}
+.diff{min-width:120px}.diff b{display:block;font-size:18px}.diff span{font-size:12px;color:#8e99bb}
+.primary{background:linear-gradient(135deg,#3ddcff,#7068ff)}
+#game{position:absolute;inset:0;display:flex;flex-direction:column;background:#070914}
+#top{height:68px;display:flex;align-items:center;gap:12px;padding:9px 13px;background:linear-gradient(180deg,#161c32,#0b0f1e);border-bottom:1px solid #252d49;z-index:4}
+.stat{min-width:82px}.label{font-size:10px;color:#8993b5;text-transform:uppercase}.value{font-weight:850;font-size:17px}
+#combo{font-size:23px;color:#86e8ff}.grow{flex:1}
+#hp{width:125px;height:9px;background:#30364d;border-radius:99px;overflow:hidden}.hpfill{height:100%;width:100%;background:linear-gradient(90deg,#61f1a5,#77e7ff)}
+#arena{position:relative;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 45%,#1b2749 0,#0e142a 38%,#070914 78%)}
+.lane{position:absolute;top:0;bottom:0;width:25%;border-left:1px solid #93a6dc12}.lane:nth-child(1){left:0}.lane:nth-child(2){left:25%}.lane:nth-child(3){left:50%}.lane:nth-child(4){left:75%;border-right:1px solid #93a6dc12}
+#hint{position:absolute;left:14px;bottom:12px;color:#7f89aa;font-size:12px}
+#songInfo{position:absolute;right:14px;bottom:12px;color:#7f89aa;font-size:12px}
+.note{position:absolute;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;transform:translate(-50%,-50%);user-select:none;box-shadow:0 0 20px #50dfff55;border:3px solid #fff9;z-index:2}
+.tap{background:radial-gradient(circle at 35% 30%,#7bf0ff,#5867ff)}
+.hold{background:radial-gradient(circle,#e68cff,#744cff);border-radius:20px}
+.note.holding{box-shadow:0 0 30px #df86ffcc;border-color:#fff}
+.holdbar{position:absolute;left:50%;top:50%;width:92px;height:8px;transform:translate(-50%,-50%);border-radius:99px;background:#ffffff33;overflow:hidden}
+.holdbar i{display:block;height:100%;width:0;background:#fff;border-radius:99px}
+.swipe{background:linear-gradient(135deg,#ffe066,#ff735e);border-radius:18px}
+.swipe .arrow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:1000;z-index:2}
+.swipe .arrow::after{content:'';position:absolute;width:42px;height:5px;border-radius:99px;background:#fff;opacity:.9}
+.swipe.up .arrow::after{transform:rotate(-90deg)}
+.swipe.down .arrow::after{transform:rotate(90deg)}
+.swipe.left .arrow::after{transform:rotate(180deg)}
+.swipe.right .arrow::after{transform:rotate(0deg)}
+.swipe .tip{position:absolute;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:14px solid #fff;z-index:3}
+.swipe.right .tip{right:4px}.swipe.left .tip{left:4px;transform:rotate(180deg)}
+.swipe.up .tip{top:4px;transform:rotate(-90deg)}.swipe.down .tip{bottom:4px;transform:rotate(90deg)}
+.note .life{position:absolute;inset:-9px;border:2px solid #fff4;border-radius:inherit;animation:pulse .7s infinite alternate}
+@keyframes pulse{to{transform:scale(1.08);opacity:.45}}
+.note .life{animation:none;inset:-48px;border-width:3px;transform:scale(1);opacity:.9}
+.note .life{transition:transform .08s linear,opacity .08s linear}
+#feedback{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-size:30px;font-weight:1000;pointer-events:none;opacity:0;z-index:5;text-shadow:0 3px 15px #000}
+#feedback.show{animation:pop .5s ease-out}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-35%) scale(.7)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) scale(1.15)}}
+#pauseLayer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#050713aa;z-index:10}
+.pauseBox{text-align:center;padding:25px;border:1px solid #364267;border-radius:20px;background:#10162c}
+@media(max-width:600px){#top{height:61px;gap:7px;padding:7px 8px}.stat{min-width:58px}.label{font-size:8px}.value{font-size:14px}#combo{font-size:20px}#hp{width:75px}.note{width:56px;height:56px}}
+</style>
+</head>
+<body>
+
+<!-- LOBBY -->
+<section id="lobby" class="screen">
+  <div class="panel">
+    <div class="menuTitle">
+      <h1>RHYTHM DRIFT</h1>
+      <p class="muted">Rhythm game berbasis kemunculan note — bukan note berjalan.</p>
+    </div>
+    <div id="progressPanel" class="card"></div>
+    <div class="card">
+      <b>🎵 PILIH LAGU</b>
+      <div class="row" style="margin-top:10px">
+        <button class="song active" data-song="Neon Pulse">Neon Pulse</button>
+        <button class="song" data-song="Skyline Rush">Skyline Rush</button>
+        <button class="song" data-song="Digital Rain">Digital Rain</button>
+      </div>
+    </div>
+    <div class="card">
+      <b>⚡ KESULITAN</b>
+      <div class="row" style="margin-top:10px">
+        <button class="diff active" data-diff="Easy"><b>Easy</b><span>Note sedikit</span></button>
+        <button class="diff" data-diff="Normal"><b>Normal</b><span>Tempo sedang</span></button>
+        <button class="diff" data-diff="High"><b>High</b><span>Note padat</span></button>
+        <button class="diff" data-diff="Extreme"><b>Extreme</b><span>Super padat</span></button>
+      </div>
+    </div>
+    <button id="play" class="primary" style="width:100%;font-size:18px;margin-top:8px">▶ MULAI GAME</button>
+    <button id="resetSave" style="width:100%;margin-top:8px;font-size:12px">↻ RESET PROGRESS</button>
+    <p class="muted" style="font-size:12px;text-align:center;margin-bottom:0">Tap note • tahan hold • swipe sesuai arah • note yang tidak ditekan hilang setelah 5 detik</p>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="game" class="hidden">
+  <div id="top">
+    <div class="stat"><div class="label">Score</div><div id="score" class="value">0</div></div>
+    <div class="stat"><div class="label">Accuracy</div><div id="acc" class="value">100%</div></div>
+    <div id="combo">0x</div><div class="grow"></div>
+    <div class="stat"><div class="label">HP</div><div id="hp"><div id="hpfill" class="hpfill"></div></div></div>
+    <button id="pause">Ⅱ</button>
+  </div>
+  <div id="arena">
+    <div class="lane"></div><div class="lane"></div><div class="lane"></div><div class="lane"></div>
+    <div id="hint">Note muncul langsung • cari note lalu tap / swipe</div>
+    <div id="songInfo"></div>
+    <div id="musicState" style="position:absolute;right:14px;top:12px;color:#aab4d4;font-size:11px">♫ MUSIC READY</div>
+    <div id="feedback"></div>
+    <div id="pauseLayer" class="hidden">
+      <div class="pauseBox">
+        <h2>PAUSED</h2>
+        <p class="muted">Game berhenti sementara.</p>
+        <div class="row">
+          <button id="resume" class="primary">▶ Lanjut</button>
+          <button id="toLobby">⌂ Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(()=>{
+const lobby=document.getElementById('lobby'), game=document.getElementById('game'), arena=document.getElementById('arena');
+const scoreEl=document.getElementById('score'),accEl=document.getElementById('acc'),comboEl=document.getElementById('combo'),hpFill=document.getElementById('hpfill');
+const feedback=document.getElementById('feedback'),pauseLayer=document.getElementById('pauseLayer'),songInfo=document.getElementById('songInfo');
+let selectedSong='Neon Pulse', selectedDiff='Easy';
+let runSong=null, runDiff=null, runStartedAt=0;
+let audio,master,notes=[],playing=false,paused=false,raf=0;
+let score=0,combo=0,hp=100,judged=0,totalPoints=0,startClock=0,lastBeat=-1,id=0,spawnClock=0,pointer=null;
+
+// Pola posisi sengaja "muncul di tempat" seperti target rhythm game.
+// Tidak ada lintasan/jalur note. Note punya lifetime maksimum 5 detik.
+const patterns=[
+ [[0,18],[2,31],[1,47],[3,66],[0,77],[2,86],[3,24],[1,58]],
+ [[3,15],[1,27],[0,43],[2,55],[3,71],[0,84],[2,38],[1,75]],
+ [[1,22],[3,34],[2,49],[0,63],[1,79],[3,90],[0,30],[2,70]]
+];
+
+function setupAudio(){
+ if(audio)return;
+ audio=new (window.AudioContext||window.webkitAudioContext)();
+ master=audio.createGain();master.gain.value=.16;master.connect(audio.destination);
+}
+function tone(f,d=.07,type='sine',g=.05){
+ if(!audio)return;
+ let o=audio.createOscillator(),v=audio.createGain();
+ o.type=type;o.frequency.value=f;v.gain.value=g;v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+d);
+ o.connect(v);v.connect(master);o.start();o.stop(audio.currentTime+d);
+}
+function clickSound(){tone(440,.05,'triangle',.035)}
+let musicTimer=null,musicStep=0;
+const songPatterns={
+ 'Neon Pulse':[220,330,392,330,262,330,440,330],
+ 'Skyline Rush':[196,294,349,294,247,294,392,294],
+ 'Digital Rain':[174,261,329,261,220,261,349,261]
+};
+function startMusic(){
+ stopMusic();
+ musicStep=0;
+ const song=runSong||selectedSong, diff=runDiff||selectedDiff;
+ const pat=songPatterns[song]||songPatterns['Neon Pulse'];
+ const tempo=diff==='Extreme'?115:diff==='High'?108:diff==='Normal'?102:96;
+ const interval=60000/tempo/2;
+ musicTimer=setInterval(()=>{
+   if(!playing||paused)return;
+   const f=pat[musicStep%pat.length];
+   tone(f,.18,'triangle',.045);
+   if(musicStep%4===0)tone(f/2,.24,'sine',.025);
+   musicStep++;
+ },interval);
+}
+function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}}
+
+function hitSound(){tone(760,.07,'sine',.045)}
+function missSound(){tone(100,.12,'sawtooth',.03)}
+function setSelected(group,el){
+ document.querySelectorAll(group).forEach(x=>x.classList.remove('active'));el.classList.add('active');
+}
+document.querySelectorAll('.song').forEach(b=>b.onclick=()=>{selectedSong=b.dataset.song;setSelected('.song',b);renderProgress()})
+document.querySelectorAll('.diff').forEach(b=>b.onclick=()=>{selectedDiff=b.dataset.diff;setSelected('.diff',b);renderProgress()})
+
+
+const SAVE_KEY='rhythm_drift_save_v2';
+let saveData=loadSave();
+function defaultSave(){
+ return {current:{song:null,diff:null,score:0,accuracy:0,playing:false},
+         best:{},completed:{}};
+}
+function loadSave(){
+ try{
+   const raw=localStorage.getItem(SAVE_KEY);
+   return raw?Object.assign(defaultSave(),JSON.parse(raw)):defaultSave();
+ }catch(e){return defaultSave()}
+}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(saveData))}catch(e){}}
+function key(song,diff){return song+'__'+diff}
+function renderProgress(){
+ const panel=document.getElementById('progressPanel');
+ if(!panel)return;
+ const diffs=['Easy','Normal','High','Extreme'];
+ let done=0;
+ diffs.forEach(d=>{if(saveData.completed[key(selectedSong,d)])done++});
+ const cur=saveData.current;
+ let currentText=cur.playing&&cur.song?`Sedang dimainkan: <b>${cur.song}</b> • ${cur.diff}`:
+   cur.song?`Terakhir dimainkan: <b>${cur.song}</b> • ${cur.diff}`:'Belum ada permainan';
+ let html=`<b>📊 PROGRESS</b><div class="muted" style="margin-top:5px">${currentText}</div>
+ <div class="progressGrid">`;
+ diffs.forEach(d=>{
+   const k=key(selectedSong,d), b=saveData.best[k], c=saveData.completed[k];
+   html+=`<div class="progressCell ${c?'done':''}">
+    <b>${d} ${c?'✓':''}</b>
+    <span>${b?b.accuracy.toFixed(1)+'%':'Belum tamat'}</span>
+   </div>`;
+ });
+ html+='</div>';
+ panel.innerHTML=html;
+}
+function saveCurrent(playingNow){
+ const song=runSong||selectedSong, diff=runDiff||selectedDiff;
+ const accuracy=judged?Math.max(0,Math.min(100,totalPoints/(judged*1000)*100)):100;
+ saveData.current={song,diff,score:Math.floor(score),accuracy,playing:playingNow};
+ persist();
+ if(!playingNow)renderProgress();
+}
+function saveResult(dead){
+ const song=runSong||selectedSong, diff=runDiff||selectedDiff;
+ const k=key(song,diff);
+ const a=judged?Math.max(0,Math.min(100,totalPoints/(judged*1000)*100)):0;
+ const old=saveData.best[k];
+ if(!old || score>old.score || a>old.accuracy){
+   saveData.best[k]={score:Math.floor(score),accuracy:a};
+ }
+ if(!dead && judged>0 && (now()-runStartedAt)>=60)saveData.completed[k]=true;
+ saveData.current={song,diff,score:Math.floor(score),accuracy:a,playing:false};
+ persist();
+}
+function reset(){
+ notes.forEach(n=>n.el.remove());notes=[];
+ score=combo=0;hp=100;judged=0;totalPoints=0;id=0;spawnClock=0;lastBeat=-1;pointer=null;
+ update();
+}
+function now(){return performance.now()/1000}
+function difficultyData(){
+ const d=runDiff||selectedDiff;
+ return {Easy:{rate:.92,types:['tap','swipe'],hp:7},Normal:{rate:.68,types:['tap','swipe','hold'],hp:6},High:{rate:.48,types:['tap','swipe','hold'],hp:5},Extreme:{rate:.32,types:['tap','swipe','hold'],hp:4}}[d]
+}
+function start(){
+ setupAudio();audio.resume();
+ runSong=selectedSong; runDiff=selectedDiff; runStartedAt=now();
+ playing=false;paused=false;reset();
+ lobby.classList.add('hidden');game.classList.remove('hidden');pauseLayer.classList.add('hidden');
+ songInfo.textContent=runSong+' • '+runDiff;
+ playing=true;startClock=now();loop.last=-1;spawnClock=0;raf=requestAnimationFrame(loop);
+ saveCurrent(true);
+ tone(330,.12,'triangle',.04);startMusic();
+ const ms=document.getElementById('musicState'); if(ms)ms.textContent='♫ '+runSong;
+}
+function spawnNote(){
+ const d=difficultyData(), pat=patterns[Math.floor(Math.random()*patterns.length)];
+ const candidates=[...pat].sort(()=>Math.random()-.5);
+ let pos=candidates.find(c=>{
+   const x=c[0]*25+12.5,y=c[1];
+   return !notes.some(n=>{
+     const r=n.el.getBoundingClientRect();
+     const ar=arena.getBoundingClientRect();
+     const nx=(r.left+r.width/2-ar.left)/ar.width*100;
+     const ny=(r.top+r.height/2-ar.top)/ar.height*100;
+     return Math.hypot(nx-x,ny-y)<13;
+   });
+ }) || candidates[0];
+ let types=d.types, type=types[Math.floor(Math.random()*types.length)];
+ let dir=['↑','↓','←','→'][Math.floor(Math.random()*4)];
+ // extreme lebih sering swipe/hold
+ if((runDiff||selectedDiff)==='Extreme'){let r=Math.random();type=r<.4?'swipe':r<.7?'hold':'tap'}
+ const el=document.createElement('div');el.className='note '+type;
+ el.style.left=pos[0]*25+12.5+'%';el.style.top=pos[1]+'%';
+ if(type==='swipe'){
+   const cls={ '↑':'up','↓':'down','←':'left','→':'right'}[dir];
+   el.classList.add(cls);
+   el.innerHTML='<span class="arrow">'+dir+'</span><i class="tip"></i>';
+ }else el.innerHTML=type==='hold'?'◆':'●';
+ const life=document.createElement('div');life.className='life';el.appendChild(life);
+ arena.appendChild(el);
+ const n={id:id++,born:now(),life:type==='hold'?1:5,type,dir,el,hit:false,holdStart:0,holding:false};
+ if(type==='hold'){
+   el.innerHTML='◆<div class="holdbar"><i></i></div>';
+ }
+ notes.push(n);clickSound();
+}
+function loop(){
+ if(!playing||paused)return;
+ const t=now();
+ const d=difficultyData();
+ // Muncul periodik dan langsung berada di posisi target.
+ if(t-spawnClock>=d.rate){spawnClock=t;spawnNote(); if((runDiff||selectedDiff)==='Extreme'&&Math.random()<.35)spawnNote()}
+ notes.forEach(n=>{
+   if(n.hit)return;
+   const age=t-n.born;
+   const left=Math.max(0,1-age/5);
+   n.el.style.opacity=Math.min(1,left+.15);
+   const ring=n.el.querySelector('.life');
+   if(ring){
+     // Lingkaran mengecil menuju note. Tepat saat menyatu = timing terbaik.
+     const scale=Math.max(.02,left);
+     ring.style.transform='scale('+scale+')';
+     ring.style.opacity=.18+.82*left;
+   }
+   n.el.style.transform='translate(-50%,-50%) scale('+(1+.05*Math.sin(age*7))+')';
+   if(age>=5)failNote(n);
+ });
+ // musik/metronom sintetis
+ const beat=Math.floor(t*2);
+ if(beat!==lastBeat){lastBeat=beat;tone(beat%4===0?220:330,.045,'square',.018)}
+ if(t>75){finish(false);return}
+ raf=requestAnimationFrame(loop);
+}
+function remove(n){n.hit=true;n.el.remove()}
+function failNote(n){
+ if(n.hit)return;
+ remove(n);judged++;combo=0;hp=Math.max(0,hp-difficultyData().hp);feedbackShow('MISS');missSound();update();
+ if(hp<=0)finish(true);
+}
+function beginHold(n){
+ if(n.hit||n.holding)return false;
+ const age=now()-n.born;
+ if(age>3)return false;
+ n.holding=true;
+ n.holdStart=now();
+ n.holdProgress=0;
+ n.el.classList.add('holding');
+ tone(520,.06,'triangle',.035);
+ return true;
+}
+function completeHold(n){
+ if(n.hit||!n.holding)return;
+ n.holding=false;
+ n.hit=true;
+ n.el.remove();
+ judged++;
+ combo++;
+ totalPoints+=1000;
+ score+=Math.round(1000*(1+Math.min(combo,40)*.025));
+ hp=Math.min(100,hp+1);
+ feedbackShow('PERFECT HOLD');
+ hitSound();
+ update();
+}
+function judge(n){
+ if(n.hit)return;
+ let age=now()-n.born;
+ // Semakin cepat setelah muncul, semakin bagus.
+ let grade,base;
+ if(age<.55){grade='PERFECT';base=1000}
+ else if(age<1.15){grade='GREAT';base=800}
+ else if(age<1.9){grade='GOOD';base=550}
+ else if(age<3.0){grade='LATE';base=250}
+ else {grade='MISS';base=0}
+ judged++;
+ if(grade==='MISS'){combo=0;hp=Math.max(0,hp-difficultyData().hp);missSound()}
+ else{combo++;totalPoints+=base;score+=Math.round(base*(1+Math.min(combo,40)*.025));hp=Math.min(100,hp+(.7));hitSound()}
+ feedbackShow(grade);remove(n);update();
+}
+function feedbackShow(t){
+ feedback.textContent=t;feedback.classList.remove('show');void feedback.offsetWidth;feedback.classList.add('show');
+}
+function update(){
+ scoreEl.textContent=Math.floor(score).toLocaleString('id-ID');
+ comboEl.textContent=combo+'x';
+ hpFill.style.width=hp+'%';
+ const accuracy=judged?Math.max(0,Math.min(100,totalPoints/(judged*1000)*100)):100;
+ accEl.textContent=accuracy.toFixed(1)+'%';
+ if(playing){
+   saveData.current={song:runSong||selectedSong,diff:runDiff||selectedDiff,score:Math.floor(score),accuracy,playing:true};
+   persist();
+ }
+}
+function nearest(x,y){
+ let best=null,bd=Infinity;
+ notes.forEach(n=>{
+   if(n.hit)return;
+   const r=n.el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   const d=Math.hypot(x-cx,y-cy);
+   if(d<bd){bd=d;best=n}
+ });
+ return {n:best,d:bd};
+}
+arena.addEventListener('pointerdown',e=>{
+ if(!playing||paused)return;
+ activePointerId=e.pointerId;
+ arena.setPointerCapture?.(e.pointerId);
+ const q=nearest(e.clientX,e.clientY);
+ if(!q.n||q.d>70){
+   pointer={x:e.clientX,y:e.clientY,n:null,id:e.pointerId};
+   return;
+ }
+ if(q.n.type==='swipe'){
+   pointer={x:e.clientX,y:e.clientY,n:q.n,id:e.pointerId};
+ }else if(q.n.type==='hold'){
+   if(beginHold(q.n)) pointer={x:e.clientX,y:e.clientY,n:q.n,id:e.pointerId};
+ }else{
+   judge(q.n);
+   pointer=null;
+ }
+});
+
+arena.addEventListener('pointerup',e=>{
+ if(e.pointerId!==activePointerId)return;
+
+ const p=pointer;
+ pointer=null;
+ activePointerId=null;
+
+ if(!playing||paused)return;
+
+ if(p?.n?.type==='swipe'){
+   const n=p.n,dx=e.clientX-p.x,dy=e.clientY-p.y;
+   let dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'→':'←'):(dy>0?'↓':'↑');
+   if(!n.hit && dir===n.dir && Math.hypot(dx,dy)>28) judge(n);
+   else if(!n.hit){
+     combo=0;hp=Math.max(0,hp-6);feedbackShow('WRONG SWIPE');missSound();update();
+   }
+ }
+
+ if(p?.n?.type==='hold'){
+   const n=p.n;
+   if(!n.hit && n.holding){
+     const heldFor=now()-n.holdStart;
+     // Let the player release at/after 1 second; tiny tolerance avoids
+     // mobile pointer timing jitter causing a false MISS.
+     if(heldFor>=0.96) completeHold(n);
+     else failNote(n);
+   }
+ }
+});
+
+arena.addEventListener('pointercancel',e=>{
+ if(e.pointerId!==activePointerId)return;
+ const p=pointer;
+ pointer=null;activePointerId=null;
+ if(p?.n?.type==='hold' && !p.n.hit && p.n.holding) failNote(p.n);
+});
+
+document.getElementById('play').onclick=start;
+document.getElementById('pause').onclick=()=>{
+ if(!playing)return;
+ paused=true;pauseLayer.classList.remove('hidden');cancelAnimationFrame(raf);
+};
+document.getElementById('resume').onclick=()=>{
+ paused=false;pauseLayer.classList.add('hidden');raf=requestAnimationFrame(loop);
+};
+document.getElementById('toLobby').onclick=()=>{
+ playing=false;paused=false;cancelAnimationFrame(raf);stopMusic();notes.forEach(n=>n.el.remove());notes=[];
+ saveCurrent(false);
+ runSong=null; runDiff=null;
+ pauseLayer.classList.add('hidden');game.classList.add('hidden');lobby.classList.remove('hidden');renderProgress();
+};
+function finish(dead){
+ playing=false;cancelAnimationFrame(raf);stopMusic();notes.forEach(n=>n.el.remove());notes=[];
+ saveResult(dead);
+ pauseLayer.classList.add('hidden');
+ game.classList.add('hidden');lobby.classList.remove('hidden');stopMusic();
+ renderProgress();
+ runSong=null; runDiff=null;
+ // Keep the normal lobby controls clickable after a run.
+ const oldMsg=document.getElementById('resultMsg');
+ if(oldMsg) oldMsg.remove();
+ const msg=document.createElement('div');
+ msg.id='resultMsg';
+ msg.className='card';
+ msg.innerHTML=`<b>${dead?'GAME OVER':'SONG CLEAR!'}</b><br>
+ Score: ${Math.floor(score).toLocaleString('id-ID')} • Accuracy: ${accEl.textContent} • Combo: ${combo}x`;
+ const panel=lobby.querySelector('.panel');
+ const play=panel.querySelector('#play');
+ panel.insertBefore(msg,play);
+ setTimeout(()=>msg.remove(),5000);
+}
+function bindLobby(){
+ document.querySelectorAll('.song').forEach(b=>{
+   b.onclick=(e)=>{e.preventDefault();selectedSong=b.dataset.song;setSelected('.song',b);renderProgress()}
+ });
+ document.querySelectorAll('.diff').forEach(b=>{
+   b.onclick=(e)=>{e.preventDefault();selectedDiff=b.dataset.diff;setSelected('.diff',b);renderProgress()}
+ });
+ const play=document.getElementById('play');
+ if(play)play.onclick=start;
+ const rs=document.getElementById('resetSave');
+ if(rs)rs.onclick=()=>{if(confirm('Hapus semua progress tersimpan?')){saveData=defaultSave();persist();renderProgress();}};
+}
+bindLobby();
+renderProgress();
+})();
+</script>
+</body>
+</html>
